@@ -1,7 +1,8 @@
 # Headless Isaac Sim on a DreamLake GPU machine: installs Isaac Sim from NVIDIA's
 # pip index onto the node's own disk, drops rigid cubes on a ground plane, steps
 # physics (and optionally RTX rendering) and checks the result.
-# First run on a node ~10-15 min (install + shader compilation), later ~5 min.
+# ~5 min; up to ~15 min on a node that has not installed Isaac Sim yet (install +
+# shader compilation, both cached on the node afterwards).
 name: isaac-sim
 on:
   workflow_dispatch:

@@ -4,11 +4,11 @@ Run GitHub Actions jobs on **DreamLake GPU** machines and keep what each run
 produced (videos, metrics, summaries) on its DreamLake run page. Three working
 examples, each a single workflow you can copy into your own repository:
 
-| Workflow | What it shows | First run | Later runs |
+| Workflow | What it shows | Time on the GPU | Cost (RTX 5090) |
 | --- | --- | --- | --- |
-| [`gpu.yml`](.github/workflows/gpu.yml) | The GPU is there and does real work (PyTorch fp16 matmul) | ~3 min | ~1 min |
-| [`mujoco.yml`](.github/workflows/mujoco.yml) | MuJoCo control task with checks and a rendered video (headless EGL) | ~2 min | ~1 min |
-| [`isaac-sim.yml`](.github/workflows/isaac-sim.yml) | Headless Isaac Sim: rigid-body physics and RTX rendering | ~10–15 min | ~5 min |
+| [`gpu.yml`](.github/workflows/gpu.yml) | The GPU is there and does real work (PyTorch fp16 matmul) | ~3 min the first time (PyTorch downloads), ~1 min after | ~$0.06 |
+| [`mujoco.yml`](.github/workflows/mujoco.yml) | A control task with checks and a rendered video (MuJoCo, headless EGL) | under 1 min | ~$0.01 |
+| [`isaac-sim.yml`](.github/workflows/isaac-sim.yml) | Headless Isaac Sim: rigid-body physics and RTX rendering | ~5 min; up to ~15 min on a node that has not installed Isaac Sim yet | $0.10–0.30 |
 
 Each run is billed by the GPU time it uses (RTX 5090 $1.20/GPU-hour, RTX PRO
 6000 $2.40/GPU-hour; while billing is on Stripe's sandbox, paid with test
