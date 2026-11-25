@@ -1,4 +1,4 @@
-"""MuJoCo example: a two-link arm tracks a target trajectory with a PD controller.
+"""MuJoCo example: a two-link arm tracks a target trajectory (PD control with gravity compensation).
 
 Checks that the simulation stays finite and the arm tracks its target, writes
 the headline numbers (metrics.json), a summary (summary.json) and a rendered
@@ -60,7 +60,10 @@ kp, kd = np.array([120.0, 60.0]), np.array([12.0, 6.0])
 
 
 def target(t):
-    return np.array([0.6 * math.sin(1.5 * t), 0.8 * math.sin(2.0 * t + 0.5)])
+    """Joint angles to track, and their velocities."""
+    q = np.array([0.6 * math.sin(1.5 * t), 0.8 * math.sin(2.0 * t + 0.5)])
+    qd = np.array([0.9 * math.cos(1.5 * t), 1.6 * math.cos(2.0 * t + 0.5)])
+    return q, qd
 
 
 renderer = None
@@ -75,10 +78,12 @@ errors, per_second, steps = [], [], 0
 next_frame, t0 = 0.0, time.time()
 while data.time < args.seconds:
     q, qd = data.qpos[:2], data.qvel[:2]
-    data.ctrl[:] = kp * (target(data.time) - q) - kd * qd
+    q_ref, qd_ref = target(data.time)
+    # PD on position and velocity, plus gravity and Coriolis compensation (qfrc_bias).
+    data.ctrl[:] = kp * (q_ref - q) + kd * (qd_ref - qd) + data.qfrc_bias[:2]
     mujoco.mj_step(model, data)
     steps += 1
-    errors.append(float(np.abs(target(data.time) - data.qpos[:2]).mean()))
+    errors.append(float(np.abs(target(data.time)[0] - data.qpos[:2]).mean()))
     if renderer is not None and data.time >= next_frame:
         renderer.update_scene(data, camera="side")
         frames.append(renderer.render())
