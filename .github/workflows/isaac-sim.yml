@@ -1,0 +1,40 @@
+# Headless Isaac Sim on a DreamLake GPU machine: installs Isaac Sim from NVIDIA's
+# pip index onto the node's own disk, drops rigid cubes on a ground plane, steps
+# physics (and optionally RTX rendering) and checks the result.
+# First run on a node ~10-15 min (install + shader compilation), later ~5 min.
+name: isaac-sim
+on:
+  workflow_dispatch:
+    inputs:
+      sim_seconds:
+        description: Wall-clock seconds to keep stepping the simulation (after install)
+        default: "120"
+      render:
+        description: Also render a camera with RTX
+        type: boolean
+        default: true
+      isaacsim_version:
+        description: isaacsim pip version (5.x supports RTX 50-series)
+        default: "5.1.0"
+      machine:
+        description: DreamLake GPU machine type
+        type: choice
+        options: [dreamlake-gpu-rtx5090, dreamlake-gpu-rtxpro6000]
+        default: dreamlake-gpu-rtx5090
+jobs:
+  isaac-sim:
+    runs-on: ${{ inputs.machine || 'dreamlake-gpu-rtx5090' }}
+    # Below the machine type's own time limit (2 h on these labels).
+    timeout-minutes: 60
+    env:
+      # Passed through env, never ${{ inputs.* }} inside run: (script injection).
+      SIM_SECONDS: ${{ inputs.sim_seconds || '120' }}
+      RENDER: ${{ inputs.render }}
+      ISAACSIM_VERSION: ${{ inputs.isaacsim_version || '5.1.0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Isaac Sim
+        run: examples/isaac-sim/run.sh outputs
+      - name: Save evidence
+        if: always()
+        run: python3 ci/evidence.py outputs
