@@ -60,7 +60,10 @@ t0=$(date +%s)
 case "$ISAACSIM_VERSION" in 4.*|5.*) py=3.11 ;; *) py=3.12 ;; esac
 uv venv -q --python "$py" "$scratch/venv" || fail_env "uv could not create a Python $py env"
 VIRTUAL_ENV="$scratch/venv" uv pip install -q "isaacsim[all,extscache]==${ISAACSIM_VERSION}" \
-  --extra-index-url https://pypi.nvidia.com --index-strategy unsafe-best-match || fail_env "pip install isaacsim==${ISAACSIM_VERSION} failed"
+  --extra-index-url https://pypi.nvidia.com --index-strategy unsafe-best-match >"$scratch/install.log" 2>&1 || {
+  tail -25 "$scratch/install.log"
+  fail_env "pip install isaacsim==${ISAACSIM_VERSION} failed: $(grep -m1 -iE 'error|failed' "$scratch/install.log" | cut -c1-200)"
+}
 # The camera video for DreamLake's viewer is encoded with imageio's bundled ffmpeg.
 VIRTUAL_ENV="$scratch/venv" uv pip install -q "imageio>=2.30" "imageio-ffmpeg>=0.5" || echo "imageio unavailable: no video"
 echo "install took $(( $(date +%s) - t0 ))s"
