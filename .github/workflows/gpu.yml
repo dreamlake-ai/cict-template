@@ -20,15 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # uv and everything it downloads live in $DREAMLAKE_CACHE_DIR, which
-      # outlives the single-use runner: the second run reuses them.
-      - name: Install uv (cached)
-        run: |
-          command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/0.9.7/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "UV_CACHE_DIR=${DREAMLAKE_CACHE_DIR:-$RUNNER_TEMP}/uv" >> "$GITHUB_ENV"
-          echo "UV_PYTHON_INSTALL_DIR=${DREAMLAKE_CACHE_DIR:-$RUNNER_TEMP}/python" >> "$GITHUB_ENV"
-
       - name: Check the GPU
         run: uv run --python 3.12 --with "torch>=2.7" python examples/gpu/check.py --out outputs
 

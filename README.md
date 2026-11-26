@@ -92,15 +92,20 @@ same workflow still runs there.
 
 Tips the examples follow:
 
-- **Cache dependencies** in `$DREAMLAKE_CACHE_DIR` (`UV_CACHE_DIR`,
-  `PIP_CACHE_DIR`, model downloads): the first run pays for the download, the
-  next ones do not.
-- **Headless rendering**: MuJoCo needs `MUJOCO_GL=egl`; Isaac Sim runs with
-  `headless: True` and needs `OMNI_KIT_ACCEPT_EULA=YES`.
+- **Install your environment in the workflow**, as on GitHub-hosted runners:
+  `uv` is on PATH, and DreamLake sets `UV_CACHE_DIR`, `PIP_CACHE_DIR`
+  (cluster cache) and `HF_HOME`, `TORCH_HOME` (node cache), so the first run
+  pays for downloads and the next ones do not. No `sudo`/`apt`, no Docker; use
+  `uv`, not `python3 -m venv` + `pip` (the system Python has no pip).
+- **Headless rendering**: DreamLake sets `MUJOCO_GL=egl` and
+  `PYOPENGL_PLATFORM=egl`; Isaac Sim runs with `headless: True` and needs
+  `OMNI_KIT_ACCEPT_EULA=YES`.
 - **Isaac Sim version**: the example installs 6.2. Isaac Sim 5.1's RTX renderer
   crashes at start-up on the NVIDIA 610 drivers newer nodes run; 6.x runs on
   both the 580 and 610 drivers.
-- **Big installs** (Isaac Sim is ~35 GB unpacked) go on the node's own disk
+- **Big installs** that should survive between runs go in
+  `$DREAMLAKE_NODE_CACHE_DIR` (Isaac Sim keeps its wheels and shader cache
+  there). Big installs (Isaac Sim is ~35 GB unpacked) go on the node's own disk
   (`$RUNNER_TEMP`), not on a shared volume.
 - **System libraries** a node lacks can be unpacked from Ubuntu packages into
   your own directory and put on `LD_LIBRARY_PATH`; see

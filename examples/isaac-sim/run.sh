@@ -32,7 +32,8 @@ df -h "$scratch" "${DREAMLAKE_CACHE_DIR:-/tmp}" 2>/dev/null || true
 
 # Isaac Sim needs ~25-35 GB unpacked: install it on the node's own disk, never on
 # a shared volume (it would fill it, and is slow to read from many nodes).
-command -v uv >/dev/null || { curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh; export PATH="$HOME/.local/bin:$PATH"; }
+# DreamLake puts uv on PATH for every job; elsewhere, install it first.
+command -v uv >/dev/null || fail_env "uv is not on PATH"
 # Caches that survive between runs: RTX shaders compile on the first frame and take
 # minutes cold; pip wheels are ~15 GB. $DREAMLAKE_NODE_CACHE_DIR is DreamLake's cache on
 # the node's own disk, separate for each namespace (and freed by DreamLake when the disk
