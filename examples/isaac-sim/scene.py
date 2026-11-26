@@ -17,7 +17,7 @@ parser.add_argument("--out", required=True)
 parser.add_argument("--sim-seconds", type=float, default=600)
 parser.add_argument("--render", default="true")
 parser.add_argument("--grid", type=int, default=8, help="cubes per side (grid x grid)")
-parser.add_argument("--video-seconds", type=float, default=10,
+parser.add_argument("--video-seconds", type=float, default=6,
                     help="simulated seconds of camera video to record (0: none)")
 parser.add_argument("--warmup-seconds", type=float, default=900,
                     help="most time to wait for the first rendered frame (shader compilation)")
@@ -70,13 +70,13 @@ def case(cid, checks):
 
 world = World(stage_units_in_meters=1.0, physics_dt=1 / 120, rendering_dt=1 / 30)
 world.scene.add_default_ground_plane()
-size, drop = 0.2, 1.5
+size, drop = 0.2, 1.0
 cubes = []
 for i in range(args.grid):
     for j in range(args.grid):
         cubes.append(world.scene.add(DynamicCuboid(
             prim_path=f"/World/cube_{i}_{j}", name=f"cube_{i}_{j}", size=size,
-            position=np.array([(i - args.grid / 2) * 0.5, (j - args.grid / 2) * 0.5, drop + 0.05 * ((i + j) % 4)]),
+            position=np.array([(i - args.grid / 2) * 0.5, (j - args.grid / 2) * 0.5, drop + 0.35 * ((i * 3 + j * 5) % args.grid)]),
             color=np.array([0.2 + 0.6 * i / args.grid, 0.4, 0.2 + 0.6 * j / args.grid]),
         )))
 
@@ -108,6 +108,7 @@ if camera is not None:
     # The first RTX frame compiles shaders (minutes on a cold cache). Wait for a real
     # frame before timing, rendering without stepping physics so the cubes stay put.
     print("warming up the renderer (first frame compiles shaders)", flush=True)
+    world.pause()  # render() must not advance physics: the cubes stay up for the recording
     tw = time.time()
     while time.time() - tw < args.warmup_seconds and app.is_running():
         world.render()
@@ -115,6 +116,7 @@ if camera is not None:
         if frame_of(camera) is not None:
             break
     warmup_s = time.time() - tw
+    world.play()
     print(f"first frame after {warmup_s:.0f}s ({warm_frames} render calls)", flush=True)
 
 start_z = np.array([c.get_world_pose()[0][2] for c in cubes])

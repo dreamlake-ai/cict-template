@@ -15,8 +15,8 @@ on:
         type: boolean
         default: true
       isaacsim_version:
-        description: isaacsim pip version (5.x supports RTX 50-series)
-        default: "5.1.0"
+        description: isaacsim pip version (5.1 crashes on NVIDIA 610 drivers; 6.x runs on 580 and 610)
+        default: "6.2.0"
       machine:
         description: DreamLake GPU machine type
         type: choice
@@ -31,7 +31,7 @@ jobs:
       # Passed through env, never ${{ inputs.* }} inside run: (script injection).
       SIM_SECONDS: ${{ inputs.sim_seconds || '120' }}
       RENDER: ${{ inputs.render }}
-      ISAACSIM_VERSION: ${{ inputs.isaacsim_version || '5.1.0' }}
+      ISAACSIM_VERSION: ${{ inputs.isaacsim_version || '6.2.0' }}
     steps:
       - uses: actions/checkout@v4
       - name: Run Isaac Sim

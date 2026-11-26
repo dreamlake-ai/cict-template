@@ -5,11 +5,11 @@
 # OUTPUT_DIR gets summary.json (and metrics.json, frame.png) for every outcome;
 # the workflow then saves it as the run's evidence (ci/evidence.py).
 #
-# Environment: ISAACSIM_VERSION (default 5.1.0), SIM_SECONDS (600), RENDER (true).
+# Environment: ISAACSIM_VERSION (default 6.2.0), SIM_SECONDS (600), RENDER (true).
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 out="${1:?usage: run.sh OUTPUT_DIR}"
-ISAACSIM_VERSION="${ISAACSIM_VERSION:-5.1.0}"
+ISAACSIM_VERSION="${ISAACSIM_VERSION:-6.2.0}"
 scratch="${RUNNER_TEMP:-/tmp}/isaac"
 mkdir -p "$out" "$scratch"
 need_gb=40
@@ -88,9 +88,9 @@ code=0
   --sim-seconds "${SIM_SECONDS:-600}" --render "${RENDER:-true}" || code=$?
 if [ ! -f "$out/summary.json" ]; then
   driver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1)
-  # Isaac Sim 5.x is validated on NVIDIA's 580-series drivers; its RTX renderer can crash at
-  # start-up on other driver branches. Name the driver so the failure points at the node.
-  [ "$code" -ge 128 ] && fail_env "Isaac Sim crashed (signal $((code - 128))) on NVIDIA driver ${driver:-unknown} on $(hostname); Isaac Sim ${ISAACSIM_VERSION} is validated on 580-series drivers"
+  # Isaac Sim's RTX renderer can crash at start-up on a driver branch it was not built for
+  # (5.1 on NVIDIA 610 drivers). Name the driver so the failure points at the node.
+  [ "$code" -ge 128 ] && fail_env "Isaac Sim ${ISAACSIM_VERSION} crashed (signal $((code - 128))) on NVIDIA driver ${driver:-unknown} on $(hostname); Isaac Sim 5.1 does not run on 610 drivers, 6.x does"
   fail_env "Isaac Sim exited $code without writing summary.json"
 fi
 exit "$code"
