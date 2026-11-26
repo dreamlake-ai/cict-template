@@ -125,8 +125,7 @@ start_z = np.array([c.get_world_pose()[0][2] for c in cubes])
 # one clock (simulated seconds), in episodes/sim/. The .dreamrc written at the end lays them out.
 episode = os.path.join(args.out, "episodes", "sim")
 os.makedirs(episode, exist_ok=True)
-FPS, PHYSICS_HZ = 15, 120
-every = PHYSICS_HZ // FPS            # physics steps between samples
+FPS = 15  # samples per simulated second, for the video and the table alike
 video, video_frames = None, 0
 if camera is not None and args.video_seconds > 0:
     try:
@@ -141,13 +140,18 @@ telemetry = open(os.path.join(episode, "telemetry.csv"), "w")
 telemetry.write("timestamp,mean_height_m,max_height_m,mean_speed_mps,steps_per_s\n")
 MAX_ROWS = 20000
 
-steps, t0 = 0, time.time()
+# Sample on simulated time: one world.step() advances a rendering step (1/30 s, several
+# physics steps) when rendering, a physics step (1/120 s) when not.
+steps, rows, t0, sim0 = 0, 0, time.time(), world.current_time
+next_sample = 1 / FPS
 while time.time() - t0 < args.sim_seconds and app.is_running():
     world.step(render=render)
     steps += 1
-    if steps % every == 0:
-        sim_t = steps / PHYSICS_HZ
-        if steps // every <= MAX_ROWS:
+    sim_t = world.current_time - sim0
+    if sim_t + 1e-6 >= next_sample:
+        next_sample += 1 / FPS
+        rows += 1
+        if rows <= MAX_ROWS:
             z = np.array([c.get_world_pose()[0][2] for c in cubes])
             v = np.array([np.linalg.norm(c.get_linear_velocity()) for c in cubes])
             telemetry.write(f"{sim_t:.4f},{z.mean():.5f},{z.max():.5f},{v.mean():.5f},{steps / (time.time() - t0):.2f}\n")
@@ -161,6 +165,7 @@ while time.time() - t0 < args.sim_seconds and app.is_running():
         metrics.append({"step": steps, "values": {"steps_per_s": steps / elapsed, "wall_s": elapsed}})
         print(f"step {steps}  {steps / elapsed:.1f} steps/s  {elapsed:.0f}s", flush=True)
 wall = time.time() - t0
+sim_s = world.current_time - sim0
 telemetry.close()
 if video is not None:
     video.close()
@@ -175,7 +180,7 @@ case("physics_settled", [
 ])
 case("throughput", [
     {"name": "stepped", "passed": steps > 0, "observed": steps, "expected": "> 0"},
-    {"name": "simulated time", "passed": steps / 120 >= 2.0, "observed": round(steps / 120, 1), "expected": ">= 2 s sim"},
+    {"name": "simulated time", "passed": sim_s >= 2.0, "observed": round(sim_s, 1), "expected": ">= 2 s sim"},
 ])
 
 if camera is not None:
@@ -197,7 +202,7 @@ if camera is not None:
 passed = sum(c["passed"] for c in cases)
 result = {
     "passed": passed == len(cases), "cases_passed": passed, "cases": cases,
-    "summary": {"boot_s": round(boot_s, 1), "render_warmup_s": round(warmup_s, 1), "steps": steps, "wall_s": round(wall, 1),
+    "summary": {"boot_s": round(boot_s, 1), "render_warmup_s": round(warmup_s, 1), "steps": steps, "simulated_s": round(sim_s, 2), "wall_s": round(wall, 1),
                 "steps_per_s": round(steps / wall, 1) if wall else 0, "render": render, "cubes": len(cubes)},
 }
 metrics.append({"step": steps, "values": {"steps_per_s": steps / wall if wall else 0, "wall_s": wall, "pass_rate": passed / len(cases)}})

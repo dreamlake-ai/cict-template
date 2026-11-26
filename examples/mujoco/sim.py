@@ -29,9 +29,9 @@ ARM = """
     <material name="grid" texture="grid" texrepeat="8 8" reflectance=".2"/>
   </asset>
   <worldbody>
-    <light pos="0 0 3" dir="0 0 -1"/>
+    <light pos="0 -2 3" dir="0 .5 -1" diffuse=".8 .8 .8"/>
     <geom type="plane" size="2 2 .1" material="grid"/>
-    <camera name="side" pos="0 -2.2 1.2" xyaxes="1 0 0 0 .5 .87"/>
+    <camera name="side" pos=".3 -2.1 1" xyaxes="1 0 0 0 0 1"/>
     <body name="upper" pos="0 0 1">
       <joint name="shoulder" type="hinge" axis="0 1 0" damping=".5"/>
       <geom type="capsule" fromto="0 0 0 .5 0 0" size=".04" rgba=".9 .5 .2 1"/>
