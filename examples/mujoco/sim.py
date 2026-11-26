@@ -1,8 +1,11 @@
 """MuJoCo example: a two-link arm tracks a target trajectory (PD control with gravity compensation).
 
 Checks that the simulation stays finite and the arm tracks its target, writes
-the headline numbers (metrics.json), a summary (summary.json) and a rendered
-video (arm.mp4, headless through EGL on GPU machines) to --out.
+the headline numbers (metrics.json), a summary (summary.json) and a replay
+DreamLake's viewer opens from the run's evidence to --out: episodes/arm/ holds
+the rendered video (camera.mp4, headless through EGL on GPU machines) and the
+joint angles against their targets (joints.csv) on one clock, and .dreamrc
+lays them out.
 
 Exit codes: 0 every check passed, 1 a check failed, 2 the run could not finish.
 Swap in your own model and checks: everything DreamLake needs is the output
@@ -49,10 +52,42 @@ ARM = """
 parser = argparse.ArgumentParser()
 parser.add_argument("--out", default="outputs")
 parser.add_argument("--seconds", type=float, default=20.0, help="simulated seconds")
-parser.add_argument("--render", default="true", help="render arm.mp4 (true/false)")
+parser.add_argument("--render", default="true", help="render episodes/arm/camera.mp4 (true/false)")
 args = parser.parse_args()
 render = str(args.render).lower() in ("1", "true", "yes")
 os.makedirs(args.out, exist_ok=True)
+
+# DreamLake's viewer config for the run folder: the video, the joints against their targets and the
+# tracking error, with a timeline to scrub them together. A chart series names [file, column].
+DREAMRC = """version: 1
+name: MuJoCo - two-link arm tracking
+dataset:
+  format: folder
+  episodes: "episodes/*/"
+  fps: {fps}
+views:
+{video}  - view: timeline
+  - view: lineChart
+    title: Shoulder (rad)
+    series:
+      - {{ field: [joints, shoulder], label: angle }}
+      - {{ field: [joints, shoulder_target], label: target }}
+  - view: lineChart
+    title: Elbow (rad)
+    series:
+      - {{ field: [joints, elbow], label: angle }}
+      - {{ field: [joints, elbow_target], label: target }}
+  - view: lineChart
+    title: Tracking error (rad)
+    series:
+      - {{ field: [joints, tracking_error] }}
+"""
+VIDEO_VIEW = """  - view: videoStack
+    cameras: ["*"]
+    height: 360
+"""
+episode = os.path.join(args.out, "episodes", "arm")
+os.makedirs(episode, exist_ok=True)
 
 model = mujoco.MjModel.from_xml_string(ARM)
 data = mujoco.MjData(model)
@@ -75,7 +110,9 @@ if render:
         print(f"rendering unavailable: {e}")
 
 errors, per_second, steps = [], [], 0
-next_frame, t0 = 0.0, time.time()
+next_frame, next_row, t0 = 0.0, 0.0, time.time()
+joints = open(os.path.join(episode, "joints.csv"), "w")
+joints.write("timestamp,shoulder,shoulder_target,elbow,elbow_target,tracking_error\n")
 while data.time < args.seconds:
     q, qd = data.qpos[:2], data.qvel[:2]
     q_ref, qd_ref = target(data.time)
@@ -83,7 +120,11 @@ while data.time < args.seconds:
     data.ctrl[:] = kp * (q_ref - q) + kd * (qd_ref - qd) + data.qfrc_bias[:2]
     mujoco.mj_step(model, data)
     steps += 1
-    errors.append(float(np.abs(target(data.time)[0] - data.qpos[:2]).mean()))
+    q_ref = target(data.time)[0]
+    errors.append(float(np.abs(q_ref - data.qpos[:2]).mean()))
+    if data.time >= next_row:  # one row per video frame: the charts and the video share a clock
+        joints.write(f"{data.time:.4f},{data.qpos[0]:.5f},{q_ref[0]:.5f},{data.qpos[1]:.5f},{q_ref[1]:.5f},{errors[-1]:.5f}\n")
+        next_row += 1 / fps
     if renderer is not None and data.time >= next_frame:
         renderer.update_scene(data, camera="side")
         frames.append(renderer.render())
@@ -92,6 +133,7 @@ while data.time < args.seconds:
         per_second.append({"step": int(round(data.time)), "values": {
             "tracking_error_rad": float(np.mean(errors[-int(1 / model.opt.timestep):]))}})
 wall = time.time() - t0
+joints.close()
 
 finite = bool(np.isfinite(data.qpos).all() and np.isfinite(data.qvel).all())
 settled_error = float(np.mean(errors[len(errors) // 4:]))  # after the first quarter: start-up transient
@@ -105,11 +147,16 @@ if renderer is not None:
     try:
         import imageio.v2 as imageio
 
-        imageio.mimsave(os.path.join(args.out, "arm.mp4"), frames, fps=fps, macro_block_size=1)
-        files.append("arm.mp4")
+        # H.264 in yuv420p plays in every browser; a keyframe each second keeps scrubbing quick.
+        imageio.mimsave(os.path.join(episode, "camera.mp4"), frames, fps=fps, codec="libx264",
+                        pixelformat="yuv420p", macro_block_size=16,
+                        ffmpeg_params=["-g", str(fps), "-movflags", "+faststart"])
+        files.append("episodes/arm/camera.mp4")
         checks.append({"name": "rendered a video", "passed": len(frames) > fps, "observed": len(frames), "expected": f"> {fps} frames"})
     except Exception as e:
-        checks.append({"name": "rendered a video", "passed": False, "observed": repr(e)[:200], "expected": "arm.mp4"})
+        checks.append({"name": "rendered a video", "passed": False, "observed": repr(e)[:200], "expected": "camera.mp4"})
+with open(os.path.join(args.out, ".dreamrc"), "w") as f:
+    f.write(DREAMRC.format(fps=fps, video=VIDEO_VIEW if "episodes/arm/camera.mp4" in files else ""))
 
 passed = all(c["passed"] for c in checks)
 summary = {

@@ -108,7 +108,6 @@ if camera is not None:
     # The first RTX frame compiles shaders (minutes on a cold cache). Wait for a real
     # frame before timing, rendering without stepping physics so the cubes stay put.
     print("warming up the renderer (first frame compiles shaders)", flush=True)
-    world.pause()  # render() must not advance physics: the cubes stay up for the recording
     tw = time.time()
     while time.time() - tw < args.warmup_seconds and app.is_running():
         world.render()
@@ -116,7 +115,9 @@ if camera is not None:
         if frame_of(camera) is not None:
             break
     warmup_s = time.time() - tw
-    world.play()
+    # Rendering also stepped physics, so the cubes may have fallen during the warm-up: put them
+    # back where they started, so the recording (and the timing) begins with the drop.
+    world.reset()
     print(f"first frame after {warmup_s:.0f}s ({warm_frames} render calls)", flush=True)
 
 start_z = np.array([c.get_world_pose()[0][2] for c in cubes])

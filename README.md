@@ -6,9 +6,9 @@ examples, each a single workflow you can copy into your own repository:
 
 | Workflow | What it shows | Time on the GPU | Cost (RTX 5090) |
 | --- | --- | --- | --- |
-| [`gpu.yml`](.github/workflows/gpu.yml) | The GPU is there and does real work (PyTorch fp16 matmul) | ~3 min the first time (PyTorch downloads), ~1 min after | ~$0.06 |
-| [`mujoco.yml`](.github/workflows/mujoco.yml) | A control task with checks and a rendered video (MuJoCo, headless EGL) | under 1 min | ~$0.01 |
-| [`isaac-sim.yml`](.github/workflows/isaac-sim.yml) | Headless Isaac Sim: rigid-body physics and RTX rendering | ~5 min; up to ~15 min on a node that has not installed Isaac Sim yet | $0.10–0.30 |
+| [`gpu.yml`](.github/workflows/gpu.yml) | The GPU is there and does real work (PyTorch fp16 matmul); charts throughput, power and temperature under 10 s of load | ~3 min the first time (PyTorch downloads), ~1 min after | ~$0.06 |
+| [`mujoco.yml`](.github/workflows/mujoco.yml) | A control task with checks; replays the rendered video with the joint angles against their targets (MuJoCo, headless EGL) | under 1 min | ~$0.01 |
+| [`isaac-sim.yml`](.github/workflows/isaac-sim.yml) | Headless Isaac Sim: rigid-body physics and RTX rendering; replays the camera video with the cubes' height and speed | ~5 min; up to ~15 min on a node that has not installed Isaac Sim yet | $0.10–0.30 |
 
 Each run is billed by the GPU time it uses (RTX 5090 $1.20/GPU-hour, RTX PRO
 6000 $2.40/GPU-hour; while billing is on Stripe's sandbox, paid with test
@@ -62,8 +62,13 @@ namespace's evidence Source. Optional files DreamLake understands:
 - `metrics.json` — headline numbers it charts:
   `[{"step": 0, "values": {"pass_rate": 1.0, "fps": 812}}]` (at most 128
   points of 16 numbers).
-- `.dreamrc` — opens the run folder as a visualization in the Source viewer
-  (for example a MuJoCo replay with a timeline). See the DreamLake docs.
+- `.dreamrc` — opens the run folder as a visualization in DreamLake's viewer
+  (the run page's Evidence tab and the Source). Every example writes one: an
+  `episodes/<name>/` folder holds videos (`*.mp4`, H.264) and tables
+  (`*.csv` with a `timestamp` column, in seconds) on one clock, and the
+  `.dreamrc` lays them out as a video, charts and a timeline. Copy one from
+  `examples/` and change the file and column names; the DreamLake docs list
+  every view.
 
 `ci/evidence.py OUTPUT_DIR [--include GLOB] [--exclude GLOB]` copies the files
 into `$DREAMLAKE_RUN_DIR` and writes the manifest DreamLake reads
@@ -89,6 +94,9 @@ Tips the examples follow:
   next ones do not.
 - **Headless rendering**: MuJoCo needs `MUJOCO_GL=egl`; Isaac Sim runs with
   `headless: True` and needs `OMNI_KIT_ACCEPT_EULA=YES`.
+- **Isaac Sim version**: the example installs 6.2. Isaac Sim 5.1's RTX renderer
+  crashes at start-up on the NVIDIA 610 drivers newer nodes run; 6.x runs on
+  both the 580 and 610 drivers.
 - **Big installs** (Isaac Sim is ~35 GB unpacked) go on the node's own disk
   (`$RUNNER_TEMP`), not on a shared volume.
 - **System libraries** a node lacks can be unpacked from Ubuntu packages into

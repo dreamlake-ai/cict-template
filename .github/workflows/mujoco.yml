@@ -1,6 +1,6 @@
 # MuJoCo on a DreamLake GPU machine: a two-link arm tracks a trajectory with a
 # PD controller; the job checks the tracking error and renders a video headless
-# (EGL). ~2 min the first time (MuJoCo downloads into the cache), ~1 min after.
+# (EGL) and the joint angles, which DreamLake's viewer replays together (.dreamrc). ~2 min the first time (MuJoCo downloads into the cache), ~1 min after.
 name: mujoco
 on:
   workflow_dispatch:
@@ -9,14 +9,19 @@ on:
         description: Simulated seconds
         default: "20"
       render:
-        description: Render a video (arm.mp4)
+        description: Render a video (episodes/arm/camera.mp4)
         type: boolean
         default: true
+      machine:
+        description: DreamLake GPU machine type
+        type: choice
+        options: [dreamlake-gpu-rtx5090, dreamlake-gpu-rtxpro6000]
+        default: dreamlake-gpu-rtx5090
   # Run it on every pull request as well (each run is billed):
   # pull_request:
 jobs:
   mujoco:
-    runs-on: dreamlake-gpu-rtx5090
+    runs-on: ${{ inputs.machine || 'dreamlake-gpu-rtx5090' }}
     timeout-minutes: 20
     env:
       MUJOCO_GL: egl            # headless rendering on the GPU

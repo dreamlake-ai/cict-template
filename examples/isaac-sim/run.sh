@@ -35,8 +35,14 @@ df -h "$scratch" "${DREAMLAKE_CACHE_DIR:-/tmp}" 2>/dev/null || true
 command -v uv >/dev/null || { curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh; export PATH="$HOME/.local/bin:$PATH"; }
 # Caches that survive between runs on the same node (node-local, never a shared volume):
 # RTX shaders compile on the first frame and take minutes cold; pip wheels are ~15 GB.
-keep="/var/tmp/isaac-cache-$(id -u)"
-mkdir -p "$keep" && [ -w "$keep" ] || keep="$scratch/keep"
+# One Isaac Sim version's caches at a time (~15 GB each): a node's disk is shared with other jobs.
+keep_root="/var/tmp/isaac-cache-$(id -u)"
+keep="$keep_root/$ISAACSIM_VERSION"
+if mkdir -p "$keep" 2>/dev/null && [ -w "$keep" ]; then
+  find "$keep_root" -mindepth 1 -maxdepth 1 ! -name "$ISAACSIM_VERSION" -exec rm -rf {} + 2>/dev/null
+else
+  keep="$scratch/keep"
+fi
 kept_gb=$(du -sBG "$keep" 2>/dev/null | cut -f1 | tr -dc 0-9)
 echo "== caches in $keep (${kept_gb:-0}G kept)"
 # A warm cache on the same disk is hard-linked into the venv, so it needs far less new space.
