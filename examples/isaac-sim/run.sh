@@ -32,15 +32,17 @@ df -h "$scratch" "${DREAMLAKE_CACHE_DIR:-/tmp}" 2>/dev/null || true
 
 # Isaac Sim needs ~25-35 GB unpacked: install it on the node's own disk, never on
 # a shared volume (it would fill it, and is slow to read from many nodes).
-free_gb=$(df -BG --output=avail "$scratch" | tail -1 | tr -dc 0-9)
-[ "${free_gb:-0}" -ge "$need_gb" ] || fail_env "node-local scratch $scratch has ${free_gb}G free, need ${need_gb}G"
-
 command -v uv >/dev/null || { curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh; export PATH="$HOME/.local/bin:$PATH"; }
 # Caches that survive between runs on the same node (node-local, never a shared volume):
 # RTX shaders compile on the first frame and take minutes cold; pip wheels are ~15 GB.
 keep="/var/tmp/isaac-cache-$(id -u)"
 mkdir -p "$keep" && [ -w "$keep" ] || keep="$scratch/keep"
-echo "== caches in $keep ($(du -sh "$keep" 2>/dev/null | cut -f1) kept)"
+kept_gb=$(du -sBG "$keep" 2>/dev/null | cut -f1 | tr -dc 0-9)
+echo "== caches in $keep (${kept_gb:-0}G kept)"
+# A warm cache on the same disk is hard-linked into the venv, so it needs far less new space.
+[ "${kept_gb:-0}" -ge 10 ] && need_gb=15
+free_gb=$(df -BG --output=avail "$scratch" | tail -1 | tr -dc 0-9)
+[ "${free_gb:-0}" -ge "$need_gb" ] || fail_env "node-local scratch $scratch has ${free_gb}G free, need ${need_gb}G"
 export UV_CACHE_DIR="$keep/uv" UV_PYTHON_INSTALL_DIR="$keep/python"
 export XDG_CACHE_HOME="$keep/xdg" OMNI_KIT_ACCEPT_EULA=YES ACCEPT_EULA=Y PRIVACY_CONSENT=Y
 
@@ -84,5 +86,11 @@ echo "== run"
 code=0
 "$scratch/venv/bin/python" "$here/scene.py" --out "$out" \
   --sim-seconds "${SIM_SECONDS:-600}" --render "${RENDER:-true}" || code=$?
-[ -f "$out/summary.json" ] || fail_env "Isaac Sim exited $code without writing summary.json"
+if [ ! -f "$out/summary.json" ]; then
+  driver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1)
+  # Isaac Sim 5.x is validated on NVIDIA's 580-series drivers; its RTX renderer can crash at
+  # start-up on other driver branches. Name the driver so the failure points at the node.
+  [ "$code" -ge 128 ] && fail_env "Isaac Sim crashed (signal $((code - 128))) on NVIDIA driver ${driver:-unknown} on $(hostname); Isaac Sim ${ISAACSIM_VERSION} is validated on 580-series drivers"
+  fail_env "Isaac Sim exited $code without writing summary.json"
+fi
 exit "$code"
