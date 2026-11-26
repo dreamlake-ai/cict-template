@@ -36,6 +36,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run Isaac Sim
         run: examples/isaac-sim/run.sh outputs
-      - name: Save evidence
+      # Keeps outputs/ on the run's DreamLake page, whether the job passed or not.
+      - uses: dreamlake-ai/cict-evidence@v1
         if: always()
-        run: python3 ci/evidence.py outputs
+        with:
+          path: outputs

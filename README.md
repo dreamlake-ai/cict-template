@@ -20,8 +20,9 @@ cards). The examples only start when you run them, never on push.
 **private**. DreamLake runs jobs from private repositories only: a public
 repository runs anyone's pull request on your GPUs.
 
-**Existing repository**: copy one workflow from `.github/workflows/` and
-`ci/evidence.py` into it. Nothing else in your code changes.
+**Existing repository**: copy one workflow from `.github/workflows/`, or make
+two changes to your own: the `runs-on` label, and the evidence step below.
+Nothing else in your code changes.
 
 Then, in DreamLake:
 
@@ -47,16 +48,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python my_tests.py --out outputs   # your code, writing where it always does
-      - name: Save evidence                # 2. keep the outputs, pass or fail
+      - uses: dreamlake-ai/cict-evidence@v1   # 2. keep the outputs, pass or fail
         if: always()
-        run: python3 ci/evidence.py outputs
+        with:
+          path: outputs
 ```
 
 3. **Exit codes decide pass or fail**: your job's own steps decide; DreamLake
    does not read a result format. The examples exit 0 when every check passed,
    1 when a check failed and 2 when they could not run.
 
-What `ci/evidence.py` saves appears on the run's DreamLake page and in the
+What [`dreamlake-ai/cict-evidence`](https://github.com/dreamlake-ai/cict-evidence) saves appears on the run's DreamLake page and in the
 namespace's evidence Source. Optional files DreamLake understands:
 
 - `metrics.json` — headline numbers it charts:
@@ -70,11 +72,11 @@ namespace's evidence Source. Optional files DreamLake understands:
   `examples/` and change the file and column names; the DreamLake docs list
   every view.
 
-`ci/evidence.py OUTPUT_DIR [--include GLOB] [--exclude GLOB]` copies the files
-into `$DREAMLAKE_RUN_DIR` and writes the manifest DreamLake reads
-(`results.json`): at most 1024 files, each at most 2 GiB; bigger files are
-skipped with a warning. Outside DreamLake it only prints what it would save,
-so the same workflow still runs on GitHub-hosted runners.
+The step copies the files into `$DREAMLAKE_RUN_DIR` and writes the manifest
+DreamLake reads (`results.json`): at most 1024 files, each at most 2 GiB;
+bigger files are skipped with a warning. `include` / `exclude` take globs, one
+per line. On GitHub-hosted runners it only lists what it would save, so the
+same workflow still runs there.
 
 ## On the machine
 
@@ -83,9 +85,10 @@ so the same workflow still runs on GitHub-hosted runners.
 | Per job | 1 GPU, 8 CPU cores, 32 GB memory; 2 h (`dreamlake-gpu-rtx5090`, `-rtxpro6000`) or 8 h (`dreamlake-gpu-rtx5090-8h`) |
 | OS | x86_64 Linux (Ubuntu), NVIDIA driver installed, outbound internet |
 | You are | an ordinary user: no root, no `apt install` (install with pip/uv/conda into your own directories) |
-| `$DREAMLAKE_CACHE_DIR` | kept between runs and private to your namespace: put package caches and downloads here |
+| `$DREAMLAKE_CACHE_DIR` | kept between runs on the cluster, separate for your namespace: package caches and downloads |
 | `$RUNNER_TEMP` | the node's own disk for this run; large installs go here, removed after the job |
-| `$DREAMLAKE_RUN_DIR` | this run's evidence folder (what `ci/evidence.py` writes to) |
+| `$DREAMLAKE_RUN_DIR` | this run's evidence folder (what the evidence step writes to) |
+| `$DREAMLAKE_NODE_CACHE_DIR` | kept between runs on the same node, on its own disk, separate for your namespace: big installs and models (DreamLake frees it when the node runs short of disk) |
 
 Tips the examples follow:
 

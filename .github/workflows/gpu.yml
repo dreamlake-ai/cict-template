@@ -32,7 +32,8 @@ jobs:
       - name: Check the GPU
         run: uv run --python 3.12 --with "torch>=2.7" python examples/gpu/check.py --out outputs
 
-      # Saves outputs/ as the run's evidence, whether the check passed or not.
-      - name: Save evidence
+      # Keeps outputs/ on the run's DreamLake page, whether the job passed or not.
+      - uses: dreamlake-ai/cict-evidence@v1
         if: always()
-        run: python3 ci/evidence.py outputs
+        with:
+          path: outputs
