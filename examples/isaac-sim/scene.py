@@ -2,8 +2,10 @@
 
 Drops a grid of rigid cubes onto a ground plane, steps physics (optionally with
 RTX camera rendering) for a wall-clock budget, checks the physics settled
-plausibly, and writes summary.json, metrics.json and (when rendering) frame.png
-to --out. Replace the scene and the checks with your own.
+plausibly, and writes to --out: summary.json, metrics.json, frame.png (when
+rendering) and a replay DreamLake's viewer opens from the run's evidence (the
+.dreamrc, with episodes/sim/camera.mp4 and telemetry.csv on one clock).
+Replace the scene and the checks with your own.
 """
 import argparse
 import json
@@ -15,6 +17,8 @@ parser.add_argument("--out", required=True)
 parser.add_argument("--sim-seconds", type=float, default=600)
 parser.add_argument("--render", default="true")
 parser.add_argument("--grid", type=int, default=8, help="cubes per side (grid x grid)")
+parser.add_argument("--video-seconds", type=float, default=10,
+                    help="simulated seconds of camera video to record (0: none)")
 parser.add_argument("--warmup-seconds", type=float, default=900,
                     help="most time to wait for the first rendered frame (shader compilation)")
 args = parser.parse_args()
@@ -32,6 +36,32 @@ from isaacsim.core.api import World  # noqa: E402
 from isaacsim.core.api.objects import DynamicCuboid  # noqa: E402
 
 cases, metrics, files = [], [], []
+
+# DreamLake's viewer config for this run folder: the camera video, the scene's numbers as charts,
+# and a timeline to scrub both. Field names are file names (camera.mp4 -> camera, telemetry.csv ->
+# telemetry); a chart series names [file, column].
+VIDEO_VIEW = """  - view: videoStack
+    cameras: ["*"]
+    height: 360
+"""
+DREAMRC = """version: 1
+name: Isaac Sim - falling cubes
+dataset:
+  format: folder
+  episodes: "episodes/*/"
+  fps: {fps}
+views:
+{video}  - view: timeline
+  - view: lineChart
+    title: Cube height (m)
+    series:
+      - {{ field: [telemetry, mean_height_m], label: mean }}
+      - {{ field: [telemetry, max_height_m], label: highest }}
+  - view: lineChart
+    title: Mean cube speed (m/s)
+    series:
+      - {{ field: [telemetry, mean_speed_mps] }}
+"""
 
 
 def case(cid, checks):
@@ -88,15 +118,51 @@ if camera is not None:
     print(f"first frame after {warmup_s:.0f}s ({warm_frames} render calls)", flush=True)
 
 start_z = np.array([c.get_world_pose()[0][2] for c in cubes])
+# A replay for DreamLake's viewer: the camera as a video and the scene's numbers as a table, on
+# one clock (simulated seconds), in episodes/sim/. The .dreamrc written at the end lays them out.
+episode = os.path.join(args.out, "episodes", "sim")
+os.makedirs(episode, exist_ok=True)
+FPS, PHYSICS_HZ = 15, 120
+every = PHYSICS_HZ // FPS            # physics steps between samples
+video, video_frames = None, 0
+if camera is not None and args.video_seconds > 0:
+    try:
+        import imageio.v2 as imageio
+        # H.264 in yuv420p plays in every browser; a keyframe each second keeps scrubbing quick.
+        video = imageio.get_writer(os.path.join(episode, "camera.mp4"), fps=FPS, codec="libx264",
+                                   pixelformat="yuv420p", macro_block_size=16,
+                                   ffmpeg_params=["-g", str(FPS), "-movflags", "+faststart"])
+    except Exception as e:
+        print(f"no video: {e}", flush=True)
+telemetry = open(os.path.join(episode, "telemetry.csv"), "w")
+telemetry.write("timestamp,mean_height_m,max_height_m,mean_speed_mps,steps_per_s\n")
+MAX_ROWS = 20000
+
 steps, t0 = 0, time.time()
 while time.time() - t0 < args.sim_seconds and app.is_running():
     world.step(render=render)
     steps += 1
+    if steps % every == 0:
+        sim_t = steps / PHYSICS_HZ
+        if steps // every <= MAX_ROWS:
+            z = np.array([c.get_world_pose()[0][2] for c in cubes])
+            v = np.array([np.linalg.norm(c.get_linear_velocity()) for c in cubes])
+            telemetry.write(f"{sim_t:.4f},{z.mean():.5f},{z.max():.5f},{v.mean():.5f},{steps / (time.time() - t0):.2f}\n")
+        if video is not None and sim_t <= args.video_seconds:
+            frame = frame_of(camera)
+            if frame is not None:
+                video.append_data(np.asarray(frame)[..., :3].astype("uint8"))
+                video_frames += 1
     if steps % 1200 == 0:
         elapsed = time.time() - t0
         metrics.append({"step": steps, "values": {"steps_per_s": steps / elapsed, "wall_s": elapsed}})
         print(f"step {steps}  {steps / elapsed:.1f} steps/s  {elapsed:.0f}s", flush=True)
 wall = time.time() - t0
+telemetry.close()
+if video is not None:
+    video.close()
+with open(os.path.join(args.out, ".dreamrc"), "w") as f:
+    f.write(DREAMRC.format(fps=FPS, video=VIDEO_VIEW if video_frames else ""))
 end_z = np.array([c.get_world_pose()[0][2] for c in cubes])
 
 case("physics_settled", [
