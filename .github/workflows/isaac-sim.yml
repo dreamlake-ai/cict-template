@@ -20,11 +20,11 @@ on:
       machine:
         description: DreamLake GPU machine type
         type: choice
-        options: [dreamlake-gpu-rtx5090, dreamlake-gpu-rtxpro6000]
-        default: dreamlake-gpu-rtx5090
+        options: [blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404, blacksmith-4vcpu-gpu-rtxpro6000-ubuntu-2404]
+        default: blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404
 jobs:
   isaac-sim:
-    runs-on: ${{ inputs.machine || 'dreamlake-gpu-rtx5090' }}
+    runs-on: ${{ inputs.machine || 'blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404' }}
     # Below the machine type's own time limit (2 h on these labels).
     timeout-minutes: 60
     env:
