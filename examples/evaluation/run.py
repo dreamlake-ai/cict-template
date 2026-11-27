@@ -13,17 +13,19 @@ from dreamlake_eval.model import atomic_write
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", required=True, type=Path)
 parser.add_argument("--evaluation-id", default=os.environ.get("GITHUB_RUN_ID") or str(uuid.uuid4()))
+parser.add_argument("--dash-links", type=Path, help="Optional explicit per-test existing Dash URLs; never creates runs")
 args = parser.parse_args()
 output = args.output.resolve()
 output.mkdir(parents=True, exist_ok=False)
 source = Path(__file__).parent
 attempt_number = int(os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
+link_args = ["--dash-links", str(args.dash_links.resolve())] if args.dash_links else []
 jobs = {"accuracy": "test_accuracy.py", "async": "test_async.py"}
 suites, reports, codes = {}, [], []
 for job, file in jobs.items():
     suite_path = output / f"{job}-suite.json"
     subprocess.run([sys.executable, "-m", "dreamlake_eval.cli", "discover", "--output", str(suite_path),
-                    "--suite-id", "example", "--", file], cwd=source, check=True)
+                    "--suite-id", "example", "--", file, *link_args], cwd=source, check=True)
     suites[job] = json.loads(suite_path.read_text())
 # Declare every expected job before execution or accepting its results.
 plan = manifest(args.evaluation_id, suites)
@@ -33,7 +35,7 @@ for job, file in jobs.items():
     result = subprocess.run([sys.executable, "-m", "pytest", file, "-q", "--eval-suite-id", "example",
                              "--eval-output", str(attempt), "--eval-run-id", args.evaluation_id,
                              "--eval-job-id", job, "--eval-attempt-id", f"{job}-{attempt_number}",
-                             "--eval-attempt-number", str(attempt_number)], cwd=source)
+                             "--eval-attempt-number", str(attempt_number), *link_args], cwd=source)
     codes.append(result.returncode)
     if (attempt / "eval.json").exists():
         reports.append(attempt / "eval.json")
