@@ -35,22 +35,29 @@ trial = recorder.trial(args.name)
 trial.start()
 started = time.monotonic()
 code, execution, verdict = 2, "error", "inconclusive"
+reason = "explicit_command_exit"
 try:
     code = subprocess.run(command).returncode  # inherited streams, no capture/index
     execution = "completed" if code in (0, 1) else "interrupted" if code < 0 else "error"
     verdict = "passed" if code == 0 else "failed" if code == 1 else "inconclusive"
     if args.metrics and args.metrics.exists():
         points = json.loads(args.metrics.read_text())
+        if not isinstance(points, list):
+            raise ValueError("metrics must be a list of explicit sample points")
         for point in points:
+            if not isinstance(point, dict) or not isinstance(point.get("values"), dict):
+                raise ValueError("each sample must contain a values object")
             for name, value in point["values"].items():
                 trial.metric(name, value, step=point.get("step"))
 except KeyboardInterrupt:
     code, execution, verdict = 130, "interrupted", "inconclusive"
-except (OSError, ValueError, KeyError, TypeError):
+    reason = "interrupted"
+except Exception:  # adapter failures must never retain a successful workload verdict
     code, execution, verdict = 2, "error", "inconclusive"
+    reason = "adapter_error"
 finally:
     trial.metric("workloadDurationSeconds", time.monotonic() - started)
-    trial.complete(execution, verdict, reason="explicit_command_exit")
+    trial.complete(execution, verdict, reason=reason)
     recorder.finish(exit_code=code, interrupted=execution == "interrupted")
     names = list(recorder.snapshot()["trials"][0]["attempt"]["metrics"])
     write_aggregate(plan, [recorder.output / "eval.json"], args.output / "aggregate", metrics=names)
