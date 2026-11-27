@@ -1,4 +1,4 @@
-# DreamLake CI/CT template
+# DreamLake Evaluations template
 
 Run GitHub Actions jobs on **DreamLake GPU** machines and keep what each run
 produced (videos, metrics, summaries) on its DreamLake run page. Three working
@@ -12,7 +12,22 @@ examples, each a single workflow you can copy into your own repository:
 
 Each run is billed by the GPU time it uses (RTX 5090 $1.20/GPU-hour, RTX PRO
 6000 $2.40/GPU-hour; while billing is on Stripe's sandbox, paid with test
-cards). The examples only start when you run them, never on push.
+cards). The GPU examples only start when you run them, never on push.
+
+
+## Start with existing pytest tests
+
+Install `dreamlake-eval[pytest]==0.1.0`. Existing pytest assertions, parametrization,
+markers and fixtures remain pytest's. Add `--eval-output NEW_DIR --eval-run-id ID
+--eval-job-id JOB --eval-attempt-id ATTEMPT` to emit explicit reports. Collection
+imports test modules/hooks but does not execute test bodies or set up fixtures:
+`dreamlake-eval discover --output suite.json -- tests/`.
+
+The CPU-only [evaluation workflow](.github/workflows/evaluation.yml) runs the
+[pytest and async example](examples/evaluation/README.md), discovers individual
+files, records expected jobs, then assembles per-metric `.dreamrc` heatmaps.
+It runs on ordinary GitHub-hosted CPU runners. The GPU workflows remain manual.
+No DreamLake GPU allocation or billing setup is needed for this local example.
 
 ## Start here
 
@@ -26,13 +41,13 @@ Nothing else in your code changes.
 
 Then, in DreamLake:
 
-1. **Connect GitHub**: CI / CT → **Setup** → Connect GitHub, and select this
+1. **Connect GitHub**: Evaluations → **Setup** → Connect GitHub, and select this
    repository when GitHub asks which repositories the DreamLake App may use.
 2. **DreamLake GPU**: Setup shows whether it is enabled for your namespace
    (the DreamLake team enables it); choose **Start using**.
 3. **Credit**: a namespace owner adds credit in Settings → Billing. Jobs wait
    in the queue, and say why, until there is enough.
-4. **Run**: CI / CT → **Run workflow**, pick this repository, a workflow and a
+4. **Run**: Evaluations → **Run workflow**, pick this repository, a workflow and a
    branch, and run. Or use GitHub's **Actions → Run workflow**.
 
 `dl cict status <namespace>` shows which of these steps are done.
@@ -54,8 +69,8 @@ jobs:
           path: outputs
 ```
 
-3. **Exit codes decide pass or fail**: your job's own steps decide; DreamLake
-   does not read a result format. The examples exit 0 when every check passed,
+3. **Exit codes decide the GitHub job result**: the evaluation harness also
+   emits structured execution states, explicit verdicts and metrics. The examples exit 0 when every check passed,
    1 when a check failed and 2 when they could not run.
 
 What [`dreamlake-ai/cict-evidence`](https://github.com/dreamlake-ai/cict-evidence) saves appears on the run's DreamLake page and in the
@@ -118,4 +133,4 @@ Tips the examples follow:
 
 The run's DreamLake page shows where it waits or failed: why a job is held
 (credit, billing, a GPU slot), the step that failed with its log, and the
-evidence it saved. The DreamLake docs' CI/CT guide lists every state.
+evidence it saved. The DreamLake docs' Evaluations guide lists every state.

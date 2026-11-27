@@ -24,6 +24,7 @@ jobs:
     runs-on: ${{ inputs.machine || 'blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404' }}
     timeout-minutes: 20
     env:
+      MACHINE_TYPE: ${{ inputs.machine || 'blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404' }}
       SECONDS_TO_SIMULATE: ${{ inputs.seconds || '20' }}
       RENDER: ${{ inputs.render || 'true' }}
     steps:
@@ -31,7 +32,9 @@ jobs:
 
       - name: Simulate
         run: |
-          uv run --python 3.12 --with "mujoco>=3.2" --with "imageio[ffmpeg]" \
+          uv run --python 3.12 --with "dreamlake-eval==0.1.0" python examples/evaluation/run_workload.py \
+            --name mujoco --job-id "$GITHUB_JOB:$MACHINE_TYPE" --output outputs/evaluation --metrics outputs/metrics.json -- \
+            uv run --python 3.12 --with "mujoco>=3.2" --with "imageio[ffmpeg]" \
             python examples/mujoco/sim.py --out outputs --seconds "$SECONDS_TO_SIMULATE" --render "$RENDER"
 
       # Keeps outputs/ on the run's DreamLake page, whether the job passed or not.
