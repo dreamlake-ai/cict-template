@@ -31,7 +31,9 @@ jobs:
 
       - name: Simulate
         run: |
-          uv run --python 3.12 --with "mujoco>=3.2" --with "imageio[ffmpeg]" \
+          uv run --python 3.12 --with "dreamlake-eval==0.1.0" python examples/evaluation/run_workload.py \
+            --name mujoco --output outputs/evaluation --metrics outputs/metrics.json -- \
+            uv run --python 3.12 --with "mujoco>=3.2" --with "imageio[ffmpeg]" \
             python examples/mujoco/sim.py --out outputs --seconds "$SECONDS_TO_SIMULATE" --render "$RENDER"
 
       # Keeps outputs/ on the run's DreamLake page, whether the job passed or not.

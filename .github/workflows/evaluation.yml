@@ -1,0 +1,30 @@
+name: evaluation examples
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['examples/evaluation/**', '.github/workflows/evaluation.yml']
+  push:
+    branches: [main]
+    paths: ['examples/evaluation/**', '.github/workflows/evaluation.yml']
+permissions:
+  contents: read
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Discover, execute CPU and async tests, aggregate explicit files
+        run: uv run --python 3.12 --with 'dreamlake-eval[pytest]==0.1.0' --with 'pytest-asyncio>=1,<2' python examples/evaluation/run.py --output outputs/evaluation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation-reports
+          path: outputs/evaluation
+          include-hidden-files: true
+          if-no-files-found: error
+      - uses: dreamlake-ai/cict-evidence@v1
+        if: always()
+        with:
+          path: outputs/evaluation

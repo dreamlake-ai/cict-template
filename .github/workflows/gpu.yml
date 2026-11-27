@@ -21,7 +21,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check the GPU
-        run: uv run --python 3.12 --with "torch>=2.7" python examples/gpu/check.py --out outputs
+        run: |
+          uv run --python 3.12 --with "dreamlake-eval==0.1.0" python examples/evaluation/run_workload.py \
+            --name gpu --output outputs/evaluation --metrics outputs/metrics.json -- \
+            uv run --python 3.12 --with "torch>=2.7" python examples/gpu/check.py --out outputs
 
       # Keeps outputs/ on the run's DreamLake page, whether the job passed or not.
       - uses: dreamlake-ai/cict-evidence@v1

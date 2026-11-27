@@ -35,7 +35,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Isaac Sim
-        run: examples/isaac-sim/run.sh outputs
+        run: |
+          uv run --python 3.12 --with "dreamlake-eval==0.1.0" python examples/evaluation/run_workload.py \
+            --name isaac-sim --output outputs/evaluation --metrics outputs/metrics.json -- \
+            examples/isaac-sim/run.sh outputs
       # Keeps outputs/ on the run's DreamLake page, whether the job passed or not.
       - uses: dreamlake-ai/cict-evidence@v1
         if: always()
