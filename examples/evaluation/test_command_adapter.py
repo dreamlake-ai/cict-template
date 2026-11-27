@@ -23,6 +23,7 @@ def test_invalid_metrics_cannot_retain_pass(tmp_path, monkeypatch, metrics):
     assert report["jobId"] == "cpu:variant"
     attempt = report["trials"][0]["attempt"]
     assert attempt["execution"] == "error" and attempt["verdict"] == "inconclusive"
+    assert attempt["reason"] == "adapter_error"
 
 
 @pytest.mark.parametrize("code,state,verdict", [(0, "completed", "passed"), (1, "completed", "failed"), (2, "error", "inconclusive")])

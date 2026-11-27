@@ -35,6 +35,7 @@ trial = recorder.trial(args.name)
 trial.start()
 started = time.monotonic()
 code, execution, verdict = 2, "error", "inconclusive"
+reason = "explicit_command_exit"
 try:
     code = subprocess.run(command).returncode  # inherited streams, no capture/index
     execution = "completed" if code in (0, 1) else "interrupted" if code < 0 else "error"
@@ -50,11 +51,13 @@ try:
                 trial.metric(name, value, step=point.get("step"))
 except KeyboardInterrupt:
     code, execution, verdict = 130, "interrupted", "inconclusive"
+    reason = "interrupted"
 except Exception:  # adapter failures must never retain a successful workload verdict
     code, execution, verdict = 2, "error", "inconclusive"
+    reason = "adapter_error"
 finally:
     trial.metric("workloadDurationSeconds", time.monotonic() - started)
-    trial.complete(execution, verdict, reason="explicit_command_exit")
+    trial.complete(execution, verdict, reason=reason)
     recorder.finish(exit_code=code, interrupted=execution == "interrupted")
     names = list(recorder.snapshot()["trials"][0]["attempt"]["metrics"])
     write_aggregate(plan, [recorder.output / "eval.json"], args.output / "aggregate", metrics=names)
