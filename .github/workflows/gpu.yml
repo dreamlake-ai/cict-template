@@ -8,14 +8,14 @@ on:
       machine:
         description: DreamLake GPU machine type
         type: choice
-        options: [dreamlake-gpu-rtx5090, dreamlake-gpu-rtxpro6000]
-        default: dreamlake-gpu-rtx5090
+        options: [blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404, blacksmith-4vcpu-gpu-rtxpro6000-ubuntu-2404]
+        default: blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404
   # Run it on every pull request as well (each run is billed):
   # pull_request:
 jobs:
   gpu:
     # A DreamLake GPU label; see the machine catalog in CI / CT → Setup.
-    runs-on: ${{ inputs.machine || 'dreamlake-gpu-rtx5090' }}
+    runs-on: ${{ inputs.machine || 'blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

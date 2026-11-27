@@ -44,7 +44,7 @@ Three things, all visible in [`gpu.yml`](.github/workflows/gpu.yml):
 ```yaml
 jobs:
   gpu:
-    runs-on: dreamlake-gpu-rtx5090        # 1. a DreamLake GPU label
+    runs-on: blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404        # 1. a DreamLake GPU label
     steps:
       - uses: actions/checkout@v4
       - run: python my_tests.py --out outputs   # your code, writing where it always does
@@ -82,7 +82,7 @@ same workflow still runs there.
 
 | | |
 | --- | --- |
-| Per job | 1 GPU, 8 CPU cores, 32 GB memory; 2 h (`dreamlake-gpu-rtx5090`, `-rtxpro6000`) or 8 h (`dreamlake-gpu-rtx5090-8h`) |
+| Per job | 1 GPU, 8 CPU cores, 32 GB memory; 2 h (`blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404`, `blacksmith-4vcpu-gpu-rtxpro6000-ubuntu-2404`) or 8 h (`blacksmith-4vcpu-gpu-rtx5090-8h-ubuntu-2404`) |
 | OS | x86_64 Linux (Ubuntu), NVIDIA driver installed, outbound internet |
 | You are | an ordinary user: no root, no `apt install` (install with pip/uv/conda into your own directories) |
 | `$DREAMLAKE_CACHE_DIR` | kept between runs on the cluster, separate for your namespace: package caches and downloads |
