@@ -12,6 +12,7 @@ from dreamlake_eval.model import atomic_write
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--name", required=True)
+parser.add_argument("--job-id", help="Stable unique job/machine/variant identity within the evaluation")
 parser.add_argument("--output", required=True, type=Path)
 parser.add_argument("--metrics", type=Path, help="Explicit existing [{step,values}] metrics file")
 parser.add_argument("command", nargs=argparse.REMAINDER)
@@ -21,13 +22,14 @@ if not command:
     parser.error("a workload command is required after --")
 evaluation = os.environ.get("GITHUB_RUN_ID") or str(uuid.uuid4())
 number = int(os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
+job_id = args.job_id or args.name
 suite = {"schemaVersion": "dreamlake.eval/v1", "kind": "suite", "suiteId": args.name,
          "collection": {"complete": True, "observations": []},
          "trials": [{"id": args.name, "nodeId": args.name, "caseId": args.name,
                      "selection": "selected", "context": {"adapter": "explicit-command"}}]}
-plan = manifest(evaluation, {args.name: suite})
-recorder = Recorder(suite, args.output / f"attempt-{number}", run_id=evaluation, job_id=args.name,
-                    attempt_id=f"{args.name}-{number}", attempt_number=number)
+plan = manifest(evaluation, {job_id: suite})
+recorder = Recorder(suite, args.output / f"attempt-{number}", run_id=evaluation, job_id=job_id,
+                    attempt_id=f"{job_id}-{number}", attempt_number=number)
 atomic_write(args.output / "manifest.json", plan)
 trial = recorder.trial(args.name)
 trial.start()

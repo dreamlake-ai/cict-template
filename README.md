@@ -12,7 +12,7 @@ examples, each a single workflow you can copy into your own repository:
 
 Each run is billed by the GPU time it uses (RTX 5090 $1.20/GPU-hour, RTX PRO
 6000 $2.40/GPU-hour; while billing is on Stripe's sandbox, paid with test
-cards). The examples only start when you run them, never on push.
+cards). The GPU examples only start when you run them, never on push.
 
 
 ## Start with existing pytest tests

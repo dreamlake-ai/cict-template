@@ -17,6 +17,7 @@ args = parser.parse_args()
 output = args.output.resolve()
 output.mkdir(parents=True, exist_ok=False)
 source = Path(__file__).parent
+attempt_number = int(os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
 jobs = {"accuracy": "test_accuracy.py", "async": "test_async.py"}
 suites, reports, codes = {}, [], []
 for job, file in jobs.items():
@@ -28,10 +29,11 @@ for job, file in jobs.items():
 plan = manifest(args.evaluation_id, suites)
 atomic_write(output / "manifest.json", plan)
 for job, file in jobs.items():
-    attempt = output / job / "attempt-1"
+    attempt = output / job / f"attempt-{attempt_number}"
     result = subprocess.run([sys.executable, "-m", "pytest", file, "-q", "--eval-suite-id", "example",
                              "--eval-output", str(attempt), "--eval-run-id", args.evaluation_id,
-                             "--eval-job-id", job, "--eval-attempt-id", f"{job}-1"], cwd=source)
+                             "--eval-job-id", job, "--eval-attempt-id", f"{job}-{attempt_number}",
+                             "--eval-attempt-number", str(attempt_number)], cwd=source)
     codes.append(result.returncode)
     if (attempt / "eval.json").exists():
         reports.append(attempt / "eval.json")

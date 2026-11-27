@@ -28,3 +28,8 @@ terminal output or auto-upload logs. No GPU/simulator run is performed by the CP
 acceptance workflow; those workflows still require manual dispatch.
 
 Full guide: https://eval.dreamlake.ai
+
+GitHub retries use `GITHUB_RUN_ATTEMPT` for attempt directories, IDs and numbers.
+Command wrappers take `--job-id`; the included workflows combine GitHub job and
+machine labels so identical test names on different machines remain separate.
+For new matrix axes, include each variant in that explicit stable job identity.

@@ -28,6 +28,7 @@ jobs:
     # Below the machine type's own time limit (2 h on these labels).
     timeout-minutes: 60
     env:
+      MACHINE_TYPE: ${{ inputs.machine || 'blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404' }}
       # Passed through env, never ${{ inputs.* }} inside run: (script injection).
       SIM_SECONDS: ${{ inputs.sim_seconds || '120' }}
       RENDER: ${{ inputs.render }}
@@ -37,7 +38,7 @@ jobs:
       - name: Run Isaac Sim
         run: |
           uv run --python 3.12 --with "dreamlake-eval==0.1.0" python examples/evaluation/run_workload.py \
-            --name isaac-sim --output outputs/evaluation --metrics outputs/metrics.json -- \
+            --name isaac-sim --job-id "$GITHUB_JOB:$MACHINE_TYPE" --output outputs/evaluation --metrics outputs/metrics.json -- \
             examples/isaac-sim/run.sh outputs
       # Keeps outputs/ on the run's DreamLake page, whether the job passed or not.
       - uses: dreamlake-ai/cict-evidence@v1

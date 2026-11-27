@@ -21,9 +21,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check the GPU
+        env:
+          MACHINE_TYPE: ${{ inputs.machine || 'blacksmith-4vcpu-gpu-rtx5090-ubuntu-2404' }}
         run: |
           uv run --python 3.12 --with "dreamlake-eval==0.1.0" python examples/evaluation/run_workload.py \
-            --name gpu --output outputs/evaluation --metrics outputs/metrics.json -- \
+            --name gpu --job-id "$GITHUB_JOB:$MACHINE_TYPE" --output outputs/evaluation --metrics outputs/metrics.json -- \
             uv run --python 3.12 --with "torch>=2.7" python examples/gpu/check.py --out outputs
 
       # Keeps outputs/ on the run's DreamLake page, whether the job passed or not.

@@ -27,4 +27,4 @@ jobs:
       - uses: dreamlake-ai/cict-evidence@v1
         if: always()
         with:
-          path: outputs/evaluation
+          path: outputs/evaluation/aggregate
