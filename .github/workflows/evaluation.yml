@@ -15,6 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+      - name: Validate explicit command adapter failure handling
+        run: uv run --python 3.12 --with 'dreamlake-eval[pytest]==0.1.0' python -m pytest examples/evaluation/test_command_adapter.py -q
       - name: Discover, execute CPU and async tests, aggregate explicit files
         run: uv run --python 3.12 --with 'dreamlake-eval[pytest]==0.1.0' --with 'pytest-asyncio>=1,<2' python examples/evaluation/run.py --output outputs/evaluation
       - uses: actions/upload-artifact@v4
