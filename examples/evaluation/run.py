@@ -1,6 +1,8 @@
 """CPU-only acceptance example: distinct test files become explicit jobs."""
 import argparse
 import json
+import os
+import uuid
 from pathlib import Path
 import subprocess
 import sys
@@ -10,6 +12,7 @@ from dreamlake_eval.model import atomic_write
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", required=True, type=Path)
+parser.add_argument("--evaluation-id", default=os.environ.get("GITHUB_RUN_ID") or str(uuid.uuid4()))
 args = parser.parse_args()
 output = args.output.resolve()
 output.mkdir(parents=True, exist_ok=False)
@@ -22,12 +25,12 @@ for job, file in jobs.items():
                     "--suite-id", "example", "--", file], cwd=source, check=True)
     suites[job] = json.loads(suite_path.read_text())
 # Declare every expected job before execution or accepting its results.
-plan = manifest("cpu-example", suites)
+plan = manifest(args.evaluation_id, suites)
 atomic_write(output / "manifest.json", plan)
 for job, file in jobs.items():
     attempt = output / job / "attempt-1"
     result = subprocess.run([sys.executable, "-m", "pytest", file, "-q", "--eval-suite-id", "example",
-                             "--eval-output", str(attempt), "--eval-run-id", "cpu-example",
+                             "--eval-output", str(attempt), "--eval-run-id", args.evaluation_id,
                              "--eval-job-id", job, "--eval-attempt-id", f"{job}-1"], cwd=source)
     codes.append(result.returncode)
     if (attempt / "eval.json").exists():
